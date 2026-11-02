@@ -47,42 +47,34 @@ if ($Verificar) {
 }
 
 # --- 2) WoL en la tarjeta ---
-# OJO: en algunos drivers (p. ej. Realtek PCIe GbE) Get-NetAdapterPowerManagement DA ERROR.
-# Por eso la ruta por "propiedades avanzadas" se intenta SIEMPRE, aparte del cmdlet de energia.
-function Set-AdvPropo($nic, $names, $value) {
-  foreach ($dn in $names) {
-    try { Set-NetAdapterAdvancedProperty -Name $nic.Name -DisplayName $dn -DisplayValue $value -ErrorAction Stop; return $true } catch {}
-  }
-  return $false
-}
-# 2a) cmdlet de energia (si el driver lo soporta)
-try {
-  $pm = Get-NetAdapterPowerManagement -Name $nic.Name -ErrorAction Stop
-  if ($Verificar) {
-    Log "WakeOnMagicPacket: $($pm.WakeOnMagicPacket) | WakeOnPattern: $($pm.WakeOnPattern)"
-  } else {
-    $pm.WakeOnMagicPacket = 'Enabled'
-    $pm.WakeOnPattern     = 'Disabled'   # solo el paquete magico, menos despertares espurios
-    $pm | Set-NetAdapterPowerManagement
-    Log "Energia del adaptador ajustada por cmdlet."
-  }
-} catch { Log "(Get-NetAdapterPowerManagement no disponible en este driver; uso propiedades avanzadas.)" }
-
-# 2b) propiedades avanzadas (siempre; el nombre varia por driver e idioma)
+# Método robusto e independiente del idioma: se usan RegistryKeyword (no DisplayName) y, para los
+# ajustes de energía del dispositivo, las clases WMI de root\wmi filtradas por el PnPDeviceID del NIC.
+# (Get-NetAdapterPowerManagement falla en algunos drivers Realtek; por eso NO dependemos de él.)
+$inst = $nic.PnPDeviceID
 if ($Verificar) {
-  Get-NetAdapterAdvancedProperty -Name $nic.Name -ErrorAction SilentlyContinue |
-    Where-Object DisplayName -match 'Wake|LAN|Energy|Green|EEE' |
-    ForEach-Object { Log "  $($_.DisplayName) = $($_.DisplayValue)" }
+  Get-NetAdapterAdvancedProperty -Name $nic.Name -RegistryKeyword '*WakeOnMagicPacket','S5WakeOnLan','*EEE','EnableGreenEthernet','PowerSavingMode' -ErrorAction SilentlyContinue |
+    ForEach-Object { Log ("  {0,-28} = {1}" -f $_.DisplayName, $_.DisplayValue) }
+  Log "Pueden despertar el equipo (wake_armed):"; powercfg /devicequery wake_armed | ForEach-Object { Log "  $_" }
 } else {
-  if (Set-AdvPropo $nic @('Wake on Magic Packet','Activar en LAN magica','Activación por LAN mágica','Reactivación por paquete mágico') 'Enabled') { Log "Wake on Magic Packet = Enabled." }
-  Set-AdvPropo $nic @('Shutdown Wake-On-Lan','Shutdown Wake On Lan','Activar WOL tras apagado') 'Enabled' | Out-Null
-  # desactivar ahorros que cortan el enlace en apagado:
-  Set-AdvPropo $nic @('Energy Efficient Ethernet','Energy-Efficient Ethernet','Ethernet de ahorro de energía','EEE') 'Disabled' | Out-Null
-  Set-AdvPropo $nic @('Green Ethernet','Ethernet ecológico') 'Disabled' | Out-Null
-  Set-AdvPropo $nic @('WOL & Shutdown Link Speed','Velocidad de enlace tras apagado') '10 Mbps First' | Out-Null
-  # permitir que el dispositivo despierte el equipo
-  try { powercfg /deviceenablewake "$($nic.InterfaceDescription)" 2>$null } catch {}
-  Log "Propiedades avanzadas de WoL aplicadas (EEE/Green off, Shutdown WoL on)."
+  # 2a) palabras clave del registro (robustas): 1=activar, 0=desactivar
+  $kw = @{ '*WakeOnMagicPacket'='1'; 'S5WakeOnLan'='1'; '*EEE'='0'; 'EnableGreenEthernet'='0' }
+  foreach ($k in $kw.Keys) {
+    if (Get-NetAdapterAdvancedProperty -Name $nic.Name -RegistryKeyword $k -ErrorAction SilentlyContinue) {
+      try { Set-NetAdapterAdvancedProperty -Name $nic.Name -RegistryKeyword $k -RegistryValue $kw[$k] -NoRestart -ErrorAction Stop; Log "  $k -> $($kw[$k])" } catch {}
+    }
+  }
+  # 2b) permitir que el dispositivo despierte el equipo
+  try { powercfg /deviceenablewake "$($nic.InterfaceDescription)" 2>$null; Log "powercfg /deviceenablewake aplicado." } catch {}
+  # 2c) WMI root\wmi: despertar solo con paquete mágico y NO apagar el NIC para ahorrar energía
+  foreach ($c in 'MSPower_DeviceWakeEnable','MSNdis_DeviceWakeOnMagicPacketOnly','MSPower_DeviceEnable') {
+    $o = Get-CimInstance -Namespace root\wmi -ClassName $c -ErrorAction SilentlyContinue | Where-Object { $_.InstanceName -like "$inst*" }
+    if ($o) {
+      $v = if ($c -eq 'MSPower_DeviceEnable') { $false } else { $true }   # DeviceEnable=false => Windows no lo apaga
+      try { $o | Set-CimInstance -Property @{ Enable = $v } -ErrorAction Stop; Log "  $c -> $v" } catch {}
+    }
+  }
+  try { Restart-NetAdapter -Name $nic.Name -ErrorAction SilentlyContinue } catch {}
+  Log "WoL aplicado por RegistryKeyword + WMI."
 }
 
 # --- 3) plan de energia ---
