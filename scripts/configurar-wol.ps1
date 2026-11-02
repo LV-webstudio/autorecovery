@@ -31,7 +31,8 @@ function Log($m){ Write-Host "[autorecovery] $m" }
 function Es-Admin { ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator) }
 if (-not $Verificar -and -not (Es-Admin)) {
   Log "Hacen falta permisos de administrador: relanzo con UAC (acepta el aviso)."
-  $a = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
+  # -NoExit: la ventana elevada queda abierta para ver el resultado.
+  $a = "-NoExit -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
   if ($Adaptador) { $a += " -Adaptador `"$Adaptador`"" }
   if ($LanzadorRetomar) { $a += " -LanzadorRetomar `"$LanzadorRetomar`"" }
   Start-Process powershell -Verb RunAs -ArgumentList $a
@@ -39,7 +40,10 @@ if (-not $Verificar -and -not (Es-Admin)) {
 }
 
 $backup = Join-Path $env:ProgramData "Autorecovery\backup-$(Get-Date -Format yyyyMMdd-HHmmss)"
-if (-not $Verificar) { New-Item -ItemType Directory -Force -Path $backup | Out-Null }
+if (-not $Verificar) {
+  New-Item -ItemType Directory -Force -Path $backup | Out-Null
+  try { Start-Transcript -Path (Join-Path $backup 'configurar-wol.log') -Append | Out-Null } catch {}
+}
 
 # --- 0) adaptador: preferir el de CABLE (802.3) activo; si no, cualquiera activo ---
 if ($Adaptador) {
@@ -62,7 +66,9 @@ if ($Verificar) {
 } else {
   reg export 'HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Power' (Join-Path $backup 'power.reg') /y 2>&1 | Out-Null
   Set-ItemProperty $pk -Name HiberbootEnabled -Value 0 -Type DWord -ErrorAction SilentlyContinue
-  Log "Inicio rapido desactivado (HiberbootEnabled=0). La hibernacion se mantiene."
+  $now = (Get-ItemProperty $pk -Name HiberbootEnabled -ErrorAction SilentlyContinue).HiberbootEnabled
+  if ($now -eq 0) { Log "Inicio rapido desactivado (HiberbootEnabled=0). La hibernacion se mantiene." }
+  else { Log "AVISO: no pude desactivar el inicio rapido (HiberbootEnabled=$now). ¿Admin?" }
 }
 
 # --- 2) WoL en la tarjeta: RegistryKeyword (independiente del idioma) + WMI root\wmi ---
@@ -120,5 +126,6 @@ if ($LanzadorRetomar) {
   }
 }
 
-if ($Verificar) { Log "Verificacion terminada." } else { Log "Configuracion terminada. Copia de seguridad en $backup" }
+if ($Verificar) { Log "Verificacion terminada." } else { Log "Configuracion terminada. Copia y log en $backup" }
 Log "Prueba (tras apagar este equipo): despertarlo desde otro con enviar-wol / despertar.py usando la MAC $mac"
+if (-not $Verificar) { try { Stop-Transcript | Out-Null } catch {} }
