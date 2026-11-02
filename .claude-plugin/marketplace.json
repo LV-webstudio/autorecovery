@@ -1,0 +1,13 @@
+{
+  "name": "shania-autorecovery-marketplace",
+  "owner": { "name": "Shania Webstudio" },
+  "plugins": [
+    {
+      "name": "autorecovery",
+      "source": "./",
+      "description": "Despertar y recuperar a distancia equipos por Wake-on-LAN, con cliente del router HGU y acceso remoto cifrado y firmado.",
+      "version": "0.1.0",
+      "license": "Apache-2.0"
+    }
+  ]
+}

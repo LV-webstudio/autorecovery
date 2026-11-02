@@ -1,0 +1,9 @@
+{
+  "name": "autorecovery",
+  "version": "0.1.0",
+  "description": "Despertar y recuperar a distancia equipos por Wake-on-LAN, con cliente del router HGU de O2/Movistar y acceso remoto cifrado y firmado.",
+  "author": { "name": "Shania Webstudio" },
+  "license": "Apache-2.0",
+  "keywords": ["wake-on-lan", "router", "remote-access", "recovery"],
+  "skills": ["./"]
+}

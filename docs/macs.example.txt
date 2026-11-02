@@ -1,0 +1,6 @@
+# Ejemplo de ~/.config/autorecovery/macs.txt (copia este fichero y pon tus MAC reales; no lo subas al repo)
+# nombre MAC (IP) · notas
+mac      aa:bb:cc:dd:ee:01 (192.168.1.38, Wi-Fi; despertador de la casa)
+portatil aa:bb:cc:dd:ee:02 (192.168.1.37)
+omen     aa:bb:cc:dd:ee:03 (192.168.1.50, cable)
+pc       aa:bb:cc:dd:ee:04 (192.168.1.33, por cable)

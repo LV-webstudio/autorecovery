@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+# nunca subir secretos ni tablas reales
+.env
+macs.txt
+*secret*
