@@ -2,11 +2,11 @@
 name: autorecovery
 description: >-
   Despertar y recuperar a distancia equipos (Mac, PC Windows, portátiles) cuando una máquina amanece
-  apagada, suspendida o con la sesión caída, sin nadie delante. Cubre el encendido por red (Wake-on-LAN),
+  apagada o suspendida (no responde al ping), sin nadie delante. Cubre el encendido por red (Wake-on-LAN),
   la gestión del router HGU de O2/Movistar para obtener la MAC/IP de un equipo y reiniciarlo, el acceso
   remoto cifrado y firmado, y la configuración idempotente de Windows y BIOS para que el despertar
-  funcione. Úsala con «enciende el PC», «el equipo no responde», «despiértalo por LAN», «configura el WoL»,
-  «gestión del router», «autorecovery» o «plan de emergencia de encendido».
+  funcione. Úsala con «enciende el PC», «el equipo está apagado / no responde al ping», «despiértalo por
+  LAN», «configura el WoL», «gestión del router», «autorecovery» o «plan de emergencia de encendido».
 ---
 
 # Autorecovery
@@ -27,8 +27,8 @@ resuelva sola o con un solo comando.
 - Revisión periódica de que todos siguen configurados.
 
 > Esto es para equipos **apagados o suspendidos** (no responden al ping). Si el equipo **responde al
-> ping pero su sesión no**, no es un apagado: es un cuelgue de la sesión → se resuelve con el relevo
-> (`lv-relevo` / `wassup`), no con Wake-on-LAN.
+> ping pero su sesión no**, no es un apagado: es un cuelgue de la sesión → se resuelve con tu
+> procedimiento de relevo de sesión (en LV: `lv-relevo` / `wassup`), no con Wake-on-LAN.
 
 ## Capas del sistema (de la más barata a la más segura)
 | Capa | Qué hace | Cubre | Coste |
@@ -58,7 +58,7 @@ Procedimiento ante un equipo caído: `scripts/procedimiento-emergencia.md`.
 
 ## 2 · Gestión del router (sacar MAC/IP, reiniciar)
 Router HGU de O2/Movistar en `192.168.1.1` (micro_httpd, páginas `te_*.asp`, fabricante Askey o
-MitraStar).Solo para routers propios o con autorización de su titular.
+MitraStar). Solo para routers propios o con autorización de su titular.
 
 - La forma **limpia** de listar dispositivos con su IP/MAC es la librería de la comunidad
   `router-movistar` (Eitol) para Askey, o `mitra_router` (fernand0) para MitraStar. Ver
@@ -93,8 +93,8 @@ Cada equipo se configura desde su propia sesión. Una vez por máquina:
   `scripts/configurar-wol.ps1` (idempotente, hace copia de lo anterior). Deja: inicio rápido off, WoL
   en la tarjeta, sin suspensión con corriente y apunta MAC/IP. La **tarea de arranque** solo se crea si
   le pasas `-LanzadorRetomar <ruta.cmd>`; y ese lanzador debe limitarse a reanudar la sesión por
-  `lv-relevo` (avisar al legatus y esperar, respetando el silencio nocturno), sin hacer nada por
-  iniciativa propia.
+  tu procedimiento de relevo de sesión (en LV: `lv-relevo`: avisar y esperar, respetando el silencio
+  nocturno), sin hacer nada por iniciativa propia.
   > Descarga el `.ps1` por su SHA (el CDN de GitHub cachea `raw`); revísalo antes de ejecutarlo.
 - **BIOS (una vez por equipo):** `scripts/bios-checklist.md` (Power On by LAN/PCIE,
   Restore on AC Power Loss = Power On, ErP off).
@@ -110,7 +110,7 @@ Comprobación periódica: `scripts/configurar-wol.ps1 -Verificar` en cada Window
   off** en el adaptador (por `RegistryKeyword` + WMI `root\wmi`, independiente del idioma),
   `powercfg /deviceenablewake "<adaptador>"`, no suspender con corriente.
 - **C (arranque):** la **tarea «al iniciar»** (opcional, solo con `-LanzadorRetomar`) lanza únicamente
-  la reanudación de la sesión vía `lv-relevo` y su aviso; nada por iniciativa propia.
+  la reanudación de la sesión vía tu procedimiento de relevo (en LV: `lv-relevo`) y su aviso; nada por iniciativa propia.
   El **inicio de sesión automático** NO se activa por defecto: guardaría la contraseña de Windows en el
   registro (contra la norma de no guardar claves). Es una opción que **decide el administrador**, con
   ese aviso, si acepta el riesgo.

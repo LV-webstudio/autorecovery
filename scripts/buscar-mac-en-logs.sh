@@ -8,8 +8,8 @@
 # tolera ese formato y RELLENA cada octeto a 2 dígitos para dar una MAC válida para WoL.
 #
 # Método FIABLE: no se fía del conteo bruto (una misma conversación puede repetir una MAC y
-# sesgarlo). Busca una TABLA ARP COHERENTE: aquella donde el router (.1), el Mac (.38) y el
-# portátil (.37) salen con sus MAC conocidas (se pasan por variables de entorno); en esa tabla, la MAC de la IP pedida es la buena.
+# sesgarlo). Busca una TABLA ARP COHERENTE: aquella donde el router (.1), un equipo (.20) y otro
+# equipo (.21) salen con sus MAC conocidas (se pasan por variables de entorno); en esa tabla, la MAC de la IP pedida es la buena.
 #
 # Uso:  ROUTER_MAC=aa:bb:cc:dd:ee:00 MAC_MAC=aa:bb:cc:dd:ee:01 PORT_MAC=aa:bb:cc:dd:ee:02 \
 #         ./buscar-mac-en-logs.sh 192.168.1.20
