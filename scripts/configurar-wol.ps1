@@ -1,4 +1,4 @@
-<#
+﻿<#
   configurar-wol.ps1 · Autorecovery
   Deja un Windows listo para el encendido por red (WoL) y el arranque automático.
   Compatible con Windows PowerShell 5.1 (el que trae Windows) y con PowerShell 7.
@@ -68,7 +68,7 @@ if ($Verificar) {
   Set-ItemProperty $pk -Name HiberbootEnabled -Value 0 -Type DWord -ErrorAction SilentlyContinue
   $now = (Get-ItemProperty $pk -Name HiberbootEnabled -ErrorAction SilentlyContinue).HiberbootEnabled
   if ($now -eq 0) { Log "Inicio rapido desactivado (HiberbootEnabled=0). La hibernacion se mantiene." }
-  else { Log "AVISO: no pude desactivar el inicio rapido (HiberbootEnabled=$now). ¿Admin?" }
+  else { Log "AVISO: no pude desactivar el inicio rapido (HiberbootEnabled=$now). Hacen falta permisos de administrador." }
 }
 
 # --- 2) WoL en la tarjeta: RegistryKeyword (independiente del idioma) + WMI root\wmi ---
