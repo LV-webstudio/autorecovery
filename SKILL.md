@@ -16,14 +16,19 @@ configurados** de modo que una caída (corte de luz, suspensión, cuelgue, sesi�
 resuelva sola o con un solo comando.
 
 > Normas que no se saltan: las contraseñas las introduce el administrador y **no se guardan** en
-> chat ni en ficheros; nada irreversible sin confirmación explícita; cada equipo se configura desde
-> su propia sesión, sin saltarse permisos.
+> chat ni en ficheros; **nada irreversible** (reinicio del router, `shutdown /r`) ocurre sin la
+> **confirmación de quien manda, dada en la ventana de la sesión que actúa** (un permiso reenviado por
+> otra sesión no basta); cada equipo se configura desde su propia sesión, sin saltarse permisos.
 
 ## Cuándo usarla
 - Un equipo **no responde** (ping falla) y hay que encenderlo o reiniciarlo sin nadie delante.
 - Hay que **sacar la MAC o la IP** de un equipo desde el router.
 - Toca **dejar blindado** un equipo nuevo (o uno que falló): WoL, BIOS, arranque automático.
 - Revisión periódica de que todos siguen configurados.
+
+> Esto es para equipos **apagados o suspendidos** (no responden al ping). Si el equipo **responde al
+> ping pero su sesión no**, no es un apagado: es un cuelgue de la sesión → se resuelve con el relevo
+> (`lv-relevo` / `wassup`), no con Wake-on-LAN.
 
 ## Capas del sistema (de la más barata a la más segura)
 | Capa | Qué hace | Cubre | Coste |
@@ -74,17 +79,23 @@ Un **agente en el Mac** (siempre encendido) recibe órdenes **firmadas** por una
 (Tailscale recomendada; WireGuard o Cloudflare Tunnel) y las ejecuta en la LAN. La clave del router
 **no viaja**: vive solo en el agente. Detalle y puesta en marcha: `docs/ACCESO-REMOTO.md`.
 ```
-# en el Mac:   python3 -m shania_router.agent --host <IP-tailscale> --port 8787
-# desde fuera: python3 -m shania_router.remote wake pc
+# en el Mac:   python3 -m shania_router.agent --host 127.0.0.1 --port 8787
+#              tailscale serve --bg --https 8787 http://127.0.0.1:8787
+# desde fuera: SHANIA_AGENT_URL=https://<equipo>.<tailnet>.ts.net python3 -m shania_router.remote wake pc
 ```
-Doble cerradura: cifrado de transporte (pasarela) + firma HMAC-SHA256 con ventana anti-repetición.
-`reboot` exige confirmación explícita.
+El agente escucha **solo en 127.0.0.1**; lo publica cifrado `tailscale serve` (no se abre nada en el
+router). Doble cerradura: cifrado de transporte (pasarela) + firma HMAC-SHA256 con **nonce** y ventana
+anti-repetición (una misma orden firmada no se acepta dos veces). `reboot` exige confirmación explícita.
 
 ## 3 · Implantar en TODOS los equipos (orquestación)
 Cada equipo se configura desde su propia sesión. Una vez por máquina:
 - **PC, portátil u otros equipos Windows:** ejecutar
   `scripts/configurar-wol.ps1` (idempotente, hace copia de lo anterior). Deja: inicio rápido off, WoL
-  en la tarjeta, sin suspensión con corriente, tarea de arranque que relanza el RETOMAR, y apunta MAC/IP.
+  en la tarjeta, sin suspensión con corriente y apunta MAC/IP. La **tarea de arranque** solo se crea si
+  le pasas `-LanzadorRetomar <ruta.cmd>`; y ese lanzador debe limitarse a reanudar la sesión por
+  `lv-relevo` (avisar al legatus y esperar, respetando el silencio nocturno), sin hacer nada por
+  iniciativa propia.
+  > Descarga el `.ps1` por su SHA (el CDN de GitHub cachea `raw`); revísalo antes de ejecutarlo.
 - **BIOS (una vez por equipo):** `scripts/bios-checklist.md` (Power On by LAN/PCIE,
   Restore on AC Power Loss = Power On, ErP off).
 - **Router:** reservar por DHCP la IP de cada equipo para que el WoL
@@ -94,18 +105,23 @@ Cada equipo se configura desde su propia sesión. Una vez por máquina:
 Comprobación periódica: `scripts/configurar-wol.ps1 -Verificar` en cada Windows; `despertar.py` de prueba.
 
 ## 4 · Qué deja activado cada capa (resumen técnico)
-- **A (WoL):** `powercfg /h off` (inicio rápido), «Wake on Magic Packet = Enabled» en el adaptador,
+- **A (WoL):** `HiberbootEnabled=0` (desactiva el **inicio rápido** de Windows; **la hibernación se
+  mantiene** — no se usa `powercfg /h off`), «Wake on Magic Packet = Enabled» y **EEE/Green Ethernet
+  off** en el adaptador (por `RegistryKeyword` + WMI `root\wmi`, independiente del idioma),
   `powercfg /deviceenablewake "<adaptador>"`, no suspender con corriente.
-- **C (arranque):** inicio de sesión automático (valorar el riesgo de seguridad) + tarea «al iniciar
-  el sistema» que lanza el script de reanudación de la sesión.
-- **D (reinicio):** `shutdown /r /t 60` desde la propia sesión.
+- **C (arranque):** la **tarea «al iniciar»** (opcional, solo con `-LanzadorRetomar`) lanza únicamente
+  la reanudación de la sesión vía `lv-relevo` y su aviso; nada por iniciativa propia.
+  El **inicio de sesión automático** NO se activa por defecto: guardaría la contraseña de Windows en el
+  registro (contra la norma de no guardar claves). Es una opción que **decide el administrador**, con
+  ese aviso, si acepta el riesgo.
+- **D (reinicio):** `shutdown /r /t 60` desde la propia sesión, con la confirmación de quien manda.
 
 ## Archivos
 - `shania_router/hgu.py` — cliente del router HGU (login XOR, listar dispositivos, MAC por IP).
 - `shania_router/cli.py` — `wake`/`mac`/`devices` en la LAN (resuelve MAC y despierta con ping).
 - `shania_router/agent.py` — agente en casa (recibe órdenes firmadas y actúa en la LAN).
 - `shania_router/remote.py` — cliente desde fuera (firma y llama al agente por la pasarela).
-- `scripts/despertar.py` — emisor del paquete mágico (copia de `scripts/despertar.py`).
+- `scripts/despertar.py` — emisor del paquete mágico de Wake-on-LAN (acepta nombre o MAC literal).
 - `scripts/configurar-wol.ps1` — configuración idempotente de Windows (con `-Verificar`).
 - `scripts/buscar-mac-en-logs.sh` — rescata MAC/IP de las tablas ARP ya registradas en los logs
   (tolera el formato abreviado de macOS y valida por tabla coherente).

@@ -31,30 +31,28 @@
     <rect x="-112" y="-112" width="224" height="224" rx="48" fill="url(#bglass)" stroke="url(#bgold)" stroke-width="2.5" stroke-opacity="0.85"/>
     <rect x="-112" y="-112" width="224" height="104" rx="48" fill="#ffffff" opacity="0.10"/>
   </g>
-  <!-- emblema RECTO y limpio -->
-  <g transform="translate(300,200)">
+  <!-- emblema RECTO y limpio (barra vertical en color sólido: un degradado de caja 0 no pinta una recta) -->
+  <g transform="translate(300,188)">
     <g fill="none" stroke="url(#bgold)" stroke-linecap="round">
       <path d="M -56 -50 A 78 78 0 0 1 56 -50" stroke-width="10" opacity="0.35"/>
       <path d="M -34 -36 A 48 48 0 0 1 34 -36" stroke-width="10" opacity="0.6"/>
       <circle cx="0" cy="-17" r="6" fill="url(#bgold)" stroke="none"/>
     </g>
-    <g stroke="url(#bgold)" stroke-width="15" stroke-linecap="round" fill="none">
-      <path d="M 0 18 L 0 76"/>
-      <path d="M -34 48 A 53 53 0 1 0 34 48"/>
+    <g stroke-width="15" stroke-linecap="round" fill="none">
+      <path d="M 0 18 L 0 76" stroke="#e9b94b"/>
+      <path d="M -34 48 A 53 53 0 1 0 34 48" stroke="url(#bgold)"/>
     </g>
   </g>
 
-  <!-- texto -->
+  <!-- texto (tamaño ajustado para que no se corte por la derecha ni con una fuente de respaldo más ancha) -->
   <g font-family="Montserrat, 'Segoe UI', Helvetica, Arial, sans-serif">
-    <text x="560" y="170" font-size="72" font-weight="700" letter-spacing="2" fill="#f4f1ea">Shania Autorecovery
-      <tspan font-size="26" dy="-34" fill="#f4f1ea" opacity="0.7">™</tspan>
-    </text>
-    <text x="560" y="222" font-size="27" font-weight="500" letter-spacing="1" fill="url(#bgold)">Despertar, gestionar y recuperar equipos a distancia</text>
-    <g font-size="20" fill="#c9c6bf">
-      <text x="560" y="286">Wake-on-LAN · cliente del router HGU · acceso remoto cifrado y firmado</text>
+    <text x="556" y="162" font-size="46" font-weight="700" letter-spacing="1.5" fill="#f4f1ea">SHANIA<tspan fill="url(#bgold)"> Autorecovery</tspan><tspan font-size="19" dy="-20" fill="#f4f1ea" opacity="0.7">™</tspan></text>
+    <text x="558" y="210" font-size="24" font-weight="500" letter-spacing="0.5" fill="#f4f1ea" opacity="0.92">Despertar, gestionar y recuperar equipos a distancia</text>
+    <g font-size="19" fill="#c9c6bf">
+      <text x="560" y="276">Wake-on-LAN · cliente del router HGU · acceso remoto cifrado y firmado</text>
     </g>
-    <g font-family="'SF Mono', ui-monospace, Menlo, monospace" font-size="18" fill="#e9b94b">
-      <text x="560" y="330" opacity="0.9">$ autorecovery wake pc  →  ✓ en línea</text>
+    <g font-family="'SF Mono', ui-monospace, Menlo, monospace" font-size="17" fill="#e9b94b">
+      <text x="560" y="324" opacity="0.9">$ python3 -m shania_router.cli wake pc   →   ✓ en línea</text>
     </g>
   </g>
 </svg>

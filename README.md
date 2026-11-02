@@ -46,6 +46,24 @@ vuelva a pasar.
 - **`docs/`** — `ACCESO-REMOTO.md` (pasarela cifrada), `ANALISIS-GITHUB.md` (proyectos de la comunidad), `macs.example.txt`.
 - **`SKILL.md`** y **`.claude-plugin/`** — skill y plugin para Claude Code.
 
+## Requisitos
+- **Python 3.9+**, sin dependencias externas (solo biblioteca estándar).
+- Para el WoL: tarjeta de red con Wake-on-LAN (mejor por **cable**) y BIOS preparada.
+- Para el acceso remoto: [Tailscale](https://tailscale.com) (gratis para uso personal).
+- Para configurar Windows: **PowerShell 5.1+** (el que trae Windows) como administrador.
+- Probado contra el router **HGU de O2/Movistar** (firmware Telefónica, páginas `te_*.asp`,
+  fabricante Askey o MitraStar). Otros firmwares pueden requerir ajustar `shania_router/hgu.py`.
+
+## Instalación como plugin/skill de Claude Code
+```
+/plugin marketplace add LV-webstudio/autorecovery
+/plugin install autorecovery
+```
+O clónalo y usa los scripts directamente (no hace falta instalar nada):
+```bash
+git clone https://github.com/LV-webstudio/autorecovery
+```
+
 ## Configuración de la tabla de MAC
 Copia `docs/macs.example.txt` a `~/.config/autorecovery/macs.txt` y pon tus equipos
 (`nombre MAC (IP) · notas`, una línea por equipo). Ese fichero no se sube nunca al repositorio.
@@ -55,10 +73,10 @@ Copia `docs/macs.example.txt` a `~/.config/autorecovery/macs.txt` y pon tus equi
 # en la LAN:
 python3 scripts/despertar.py pc
 python3 -m shania_router.cli wake pc
-python3 -m shania_router.cli mac 192.168.1.33
+python3 -m shania_router.cli mac 192.168.1.20
 
-# desde fuera (por la pasarela cifrada):
-export SHANIA_AGENT_URL=https://mi-equipo.mi-tailnet.ts.net:8787 SHANIA_AGENT_TOKEN=...
+# desde fuera (por la pasarela cifrada de Tailscale):
+export SHANIA_AGENT_URL=https://mi-equipo.mi-tailnet.ts.net SHANIA_AGENT_TOKEN=...
 python3 -m shania_router.remote wake pc
 ```
 

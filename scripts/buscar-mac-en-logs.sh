@@ -12,7 +12,7 @@
 # portátil (.37) salen con sus MAC conocidas (se pasan por variables de entorno); en esa tabla, la MAC de la IP pedida es la buena.
 #
 # Uso:  ROUTER_MAC=aa:bb:cc:dd:ee:00 MAC_MAC=aa:bb:cc:dd:ee:01 PORT_MAC=aa:bb:cc:dd:ee:02 \
-#         ./buscar-mac-en-logs.sh 192.168.1.33
+#         ./buscar-mac-en-logs.sh 192.168.1.20
 # Variables (al menos dos de las tres deben coincidir en una misma tabla ARP para darla por buena):
 #   ROUTER_MAC  MAC del router (puerta de enlace)
 #   MAC_MAC     MAC del equipo que hace de despertador

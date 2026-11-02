@@ -1,11 +1,12 @@
 """Cliente remoto de Shania Autorecovery (desde FUERA de casa).
 
 Firma cada petición con el secreto compartido y llama al agente a través de la pasarela
-cifrada (la URL del túnel: Tailscale/WireGuard/Cloudflare Tunnel). La contraseña del router
-NO se usa aquí: la tiene el agente en casa.
+cifrada. Usamos UNA sola vía: `tailscale serve` publica el agente (que escucha en
+127.0.0.1) como https://<equipo>.<tailnet>.ts.net, sin abrir nada en el router. La
+contraseña del router NO se usa aquí: la tiene el agente en casa.
 
 Variables de entorno:
-  SHANIA_AGENT_URL    p. ej. https://mac-casa.tu-tailnet.ts.net:8787  o  http://100.x.y.z:8787
+  SHANIA_AGENT_URL    la URL de Tailscale, p. ej. https://mac-casa.tu-tailnet.ts.net
   SHANIA_AGENT_TOKEN  el mismo secreto que el agente
 
 Ejemplos:
@@ -18,8 +19,10 @@ import hashlib
 import hmac
 import json
 import os
+import secrets
 import sys
 import time
+import urllib.error
 import urllib.request
 
 
@@ -35,17 +38,25 @@ def _llamar(path: str, payload: dict):
     url, tok = _cfg()
     body = json.dumps(payload, ensure_ascii=False).encode()
     ts = f"{time.time():.3f}"
-    msg = b"POST\n" + path.encode() + b"\n" + ts.encode() + b"\n" + body
+    nonce = secrets.token_hex(16)   # único por petición: el agente lo cachea y no acepta repeticiones
+    msg = b"POST\n" + path.encode() + b"\n" + ts.encode() + b"\n" + nonce.encode() + b"\n" + body
     sig = hmac.new(tok, msg, hashlib.sha256).hexdigest()
     req = urllib.request.Request(url + path, data=body, method="POST")
     req.add_header("Content-Type", "application/json")
     req.add_header("X-Timestamp", ts)
+    req.add_header("X-Nonce", nonce)
     req.add_header("X-Signature", sig)
     try:
         with urllib.request.urlopen(req, timeout=180) as r:
             return r.status, json.loads(r.read().decode())
     except urllib.error.HTTPError as e:
-        return e.code, json.loads(e.read().decode() or "{}")
+        try:
+            return e.code, json.loads(e.read().decode() or "{}")
+        except (ValueError, OSError):
+            return e.code, {"error": f"HTTP {e.code}"}
+    except urllib.error.URLError as e:
+        raise SystemExit(f"No se pudo contactar con el agente ({url}): {e.reason}. "
+                         f"¿Está levantado y publicado con tailscale serve?")
 
 
 def main(argv=None):

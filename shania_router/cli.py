@@ -2,15 +2,15 @@
 
 Resuelve la MAC de un equipo en este orden (de más fiable a menos):
   1) tabla local  ~/.config/autorecovery/macs.txt
-  2) caché ARP viva del propio equipo (arp -an)
-  3) logs de Claude ya registrados (tablas ARP del Mac)   -> buscar-mac-en-logs.sh
-  4) el router HGU (requiere SHANIA_ROUTER_PW, la clave de la pegatina)
+  2) caché ARP viva del propio equipo (arp -an)   (tolera el formato abreviado de macOS)
+  3) el router HGU (requiere SHANIA_ROUTER_PW, la clave de la pegatina)
 
-y luego manda el paquete mágico y comprueba con ping.
+Si falla todo, scripts/buscar-mac-en-logs.sh rescata la MAC de tablas ARP ya registradas
+(es un ayudante manual, no un paso automático). Luego manda el paquete mágico y comprueba con ping.
 
 Ejemplos:
   python3 -m shania_router.cli wake pc
-  python3 -m shania_router.cli mac 192.168.1.33
+  python3 -m shania_router.cli mac 192.168.1.20
   python3 -m shania_router.cli devices        # necesita clave del router
 """
 from __future__ import annotations
@@ -24,10 +24,21 @@ import time
 
 MACS_TXT = os.path.expanduser("~/.config/autorecovery/macs.txt")
 MAC_RE = re.compile(r"(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}")
+# macOS imprime las MAC sin el cero inicial de cada octeto (aa:b:c en vez de aa:0b:0c);
+# esta versión acepta 1 o 2 dígitos por octeto y luego se rellena con pad_mac().
+MAC_RE_LOOSE = re.compile(r"(?:[0-9A-Fa-f]{1,2}:){5}[0-9A-Fa-f]{1,2}")
 
 
 def norm_mac(m: str) -> str:
     return m.lower().replace("-", ":")
+
+
+def pad_mac(m: str) -> str:
+    """Normaliza una MAC posiblemente abreviada (aa:b:c:...) a octetos de 2 dígitos."""
+    partes = m.replace("-", ":").split(":")
+    if len(partes) != 6:
+        return norm_mac(m)
+    return ":".join(p.lower().zfill(2) for p in partes)
 
 
 def mac_de_tabla(nombre: str):
@@ -52,10 +63,12 @@ def mac_de_arp(ip: str):
     except Exception:
         return None
     for ln in out.splitlines():
-        if f"({ip})" in ln:
-            m = MAC_RE.search(ln)
-            if m and "incomplete" not in ln:
-                return norm_mac(m.group())
+        if f"({ip})" in ln and "incomplete" not in ln:
+            # quitamos la IP de la línea para que la regex de MAC no la confunda
+            resto = ln.replace(f"({ip})", " ")
+            m = MAC_RE.search(resto) or MAC_RE_LOOSE.search(resto)
+            if m:
+                return pad_mac(m.group())
     return None
 
 
@@ -86,7 +99,7 @@ def ping(ip: str, timeout=2) -> bool:
 
 # Asociaciones nombre -> IP opcionales (se pueden dejar vacías: también se acepta la IP directamente
 # y la IP que figure entre paréntesis en macs.txt). Ejemplo:
-# IPS_CONOCIDAS = {"pc": "192.168.1.33", "portatil": "192.168.1.37"}
+# IPS_CONOCIDAS = {"pc": "192.168.1.20", "portatil": "192.168.1.21"}
 IPS_CONOCIDAS: dict = {}
 
 IP_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")

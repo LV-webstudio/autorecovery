@@ -19,7 +19,7 @@ Uso rápido:
     if c.login():
         for d in c.list_devices():
             print(d.ip, d.mac, d.name, d.interface, d.online)
-        print(c.mac_for_ip("192.168.1.33"))
+        print(c.mac_for_ip("192.168.1.20"))
 """
 from __future__ import annotations
 
@@ -147,9 +147,13 @@ IP_RE = re.compile(r"\b(?:192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,
 
 
 def parse_devices(html: str) -> list[Device]:
-    """Extrae dispositivos de forma defensiva. Se afina cuando veamos el HTML real autenticado."""
+    """Extrae dispositivos de la tabla de la página autenticada.
+
+    SOLO empareja IP y MAC que viven en la MISMA fila (<tr>), que es la única correspondencia
+    fiable. NO se hace emparejado posicional de IP/MAC sueltas: daría parejas falsas (una IP con
+    la MAC de otro equipo) sin avisar. Si el HTML real no son filas <tr>, devuelve [] y se ajusta
+    el parser al ver la página autenticada de verdad (mejor vacío que un dato inventado)."""
     devices: list[Device] = []
-    # estrategia 1: filas de tabla <tr>...</tr> que contengan IP y MAC
     for row in re.findall(r"<tr[\s>].*?</tr>", html, re.I | re.S):
         text = re.sub(r"<[^>]+>", " ", row)
         ip = IP_RE.search(text)
@@ -162,13 +166,6 @@ def parse_devices(html: str) -> list[Device]:
                     name = c
                     break
             devices.append(Device(ip=ip.group(), mac=_norm_mac(mac.group()), name=name))
-    if devices:
-        return devices
-    # estrategia 2: parejas sueltas IP/MAC en el documento (sin tabla)
-    ips = IP_RE.findall(html)
-    macs = [_norm_mac(m) for m in MAC_RE.findall(html)]
-    for ip, mac in zip(ips, macs):
-        devices.append(Device(ip=ip, mac=mac))
     return devices
 
 
